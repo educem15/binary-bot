@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: binary-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: FIXER_API_KEY
+        value: 9d9484ecd2c837db74c4f20f27432bd7
+      - key: ALPHA_VANTAGE_API_KEY
+        value: EV27177C70UGBLHW
+      - key: FINNHUB_API_KEY
+        value: curuothr01qt2nchd24gcuruothr01qt2nchd250
+    autoDeploy: true
