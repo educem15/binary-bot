@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Research Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-card-hover: #1c2333;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --green: #3fb950;
+            --red: #f85149;
+            --blue: #58a6ff;
+            --orange: #d29922;
+            --purple: #bc8cff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-dark);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 80px;
+        }
+
+        /* ── Navbar ── */
+        .navbar-custom {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+        }
+        .navbar-custom .brand {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--green);
+        }
+        .navbar-custom .brand i { margin-right: 6px; }
+
+        /* ── Cards ── */
+        .card-dark {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.15s, border-color 0.15s;
+        }
+        .card-dark:hover {
+            border-color: var(--blue);
+            transform: translateY(-2px);
+        }
+        .card-header-dark {
+            background: rgba(0,0,0,0.2);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-body-dark { padding: 16px; }
+
+        /* ── Badges ── */
+        .badge-bullish { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+        .badge-bearish { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+        .badge-neutral { background: rgba(139,148,158,0.15); color: var(--text-muted); border: 1px solid rgba(139,148,158,0.3); }
+        .badge-squeeze { background: rgba(210,153,34,0.15); color: var(--orange); border: 1px solid rgba(210,153,34,0.3); }
+        .badge-ema { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+        .badge-risk-low { background: rgba(63,185,80,0.15); color: var(--green); }
+        .badge-risk-moderate { background: rgba(210,153,34,0.15); color: var(--orange); }
+        .badge-risk-high { background: rgba(248,81,73,0.15); color: var(--red); }
+        .badge-uoa { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+
+        /* ── Stats Row ── */
+        .stat-box {
+            text-align: center;
+            padding: 12px 8px;
+        }
+        .stat-box .val {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .stat-box .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── Score Ring ── */
+        .score-ring {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .score-high { border: 3px solid var(--green); color: var(--green); }
+        .score-mid { border: 3px solid var(--orange); color: var(--orange); }
+        .score-low { border: 3px solid var(--red); color: var(--red); }
+
+        /* ── Ticker Card ── */
+        .ticker-card {
+            cursor: pointer;
+        }
+        .ticker-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .ticker-info { flex: 1; min-width: 0; }
+        .ticker-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .ticker-price {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .ticker-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .ticker-tags .badge {
+            font-size: 0.65rem;
+            padding: 3px 6px;
+        }
+
+        /* ── Detail Modal ── */
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .modal-header {
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-footer {
+            border-top: 1px solid var(--border);
+        }
+        .btn-close { filter: invert(1); }
+
+        /* ── Strategy Card ── */
+        .strategy-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+        .strategy-card .strat-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        /* ── Trade Plan ── */
+        .trade-plan {
+            background: rgba(63,185,80,0.05);
+            border: 1px solid rgba(63,185,80,0.2);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 10px;
+        }
+        .trade-plan h6 { color: var(--green); margin-bottom: 10px; }
+        .trade-plan .plan-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .trade-plan .plan-label {
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .trade-plan .plan-value {
+            text-align: right;
+            font-weight: 500;
+        }
+
+        /* ── P&L Table ── */
+        .pnl-table { font-size: 0.8rem; }
+        .pnl-table td, .pnl-table th {
+            padding: 4px 8px;
+            border-color: var(--border);
+        }
+        .pnl-positive { color: var(--green); }
+        .pnl-negative { color: var(--red); }
+
+        /* ── Greeks Bar ── */
+        .greek-item {
+            text-align: center;
+            flex: 1;
+        }
+        .greek-val { font-weight: 600; font-size: 0.9rem; }
+        .greek-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+
+        /* ── Squeeze Meter ── */
+        .squeeze-meter {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .squeeze-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* ── Loading ── */
+        .loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(13,17,23,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-overlay .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: var(--green);
+        }
+        .loading-text {
+            margin-top: 16px;
+            color: var(--text-muted);
+        }
+
+        /* ── Quick Search ── */
+        .search-input {
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 8px;
+            padding: 8px 14px;
+        }
+        .search-input:focus {
+            background: var(--bg-dark);
+            border-color: var(--blue);
+            color: var(--text);
+            box-shadow: 0 0 0 2px rgba(88,166,255,0.2);
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+
+        /* ── Section Headers ── */
+        .section-header {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── Mobile optimizations ── */
+        @media (max-width: 768px) {
+            .stat-box .val { font-size: 1.2rem; }
+            .ticker-name { font-size: 1rem; }
+            .container { padding-left: 12px; padding-right: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner-border" role="status"></div>
+    <div class="loading-text" id="loadingText">Scanning markets...</div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar-custom sticky-top">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="brand"><i class="bi bi-graph-up-arrow"></i> Options Scanner</div>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="text-muted" style="font-size:0.75rem" id="lastUpdate"></span>
+            <button class="btn btn-sm btn-outline-light" onclick="runDailyReport()" id="scanBtn">
+                <i class="bi bi-arrow-clockwise"></i> Scan
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container mt-3">
+
+    <!-- Quick Search -->
+    <div class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control search-input" id="quickSearch"
+                   placeholder="Quick scan a ticker (e.g. TSLA, NVDA)..."
+                   onkeydown="if(event.key==='Enter')quickScan()">
+            <button class="btn btn-outline-light" onclick="quickScan()">
+                <i class="bi bi-search"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Budget Control -->
+    <div class="card-dark mb-3">
+        <div class="card-body-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <small class="text-muted">Budget per trade</small>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <strong id="budgetDisplay">$500</strong>
+                        <input type="range" class="form-range" style="width:150px" min="100" max="2000" step="50"
+                               value="500" id="budgetSlider" oninput="updateBudget(this.value)">
+                    </div>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted">Max premium</small>
+                    <div><strong id="maxPremiumDisplay">$5.00</strong>/share</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Overview Stats -->
+    <div class="card-dark mb-3" id="summaryCard" style="display:none">
+        <div class="card-header-dark">
+            <span><i class="bi bi-bar-chart"></i> Market Overview</span>
+            <span class="badge" id="moodBadge">--</span>
+        </div>
+        <div class="card-body-dark">
+            <div class="row g-0" id="statsRow">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Watchlist -->
+    <div class="section-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-star"></i> Top Picks</span>
+        <span class="badge bg-secondary" id="resultCount">0</span>
+    </div>
+    <div id="watchlistContainer">
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-arrow-clockwise" style="font-size:2rem"></i>
+            <p class="mt-2">Tap <strong>Scan</strong> to generate your morning watchlist</p>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">--</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const API = window.location.origin;
+let currentBudget = 500;
+let reportData = null;
+
+function updateBudget(val) {
+    currentBudget = parseInt(val);
+    document.getElementById('budgetDisplay').textContent = `$${val}`;
+    document.getElementById('maxPremiumDisplay').textContent = `$${(val/100).toFixed(2)}`;
+}
+
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text || 'Scanning markets...';
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ── Daily Report ─────────────────────────────────────────────────
+async function runDailyReport() {
+    showLoading('Screening 60+ tickers... This may take a minute.');
+    try {
+        const resp = await fetch(`${API}/options/daily-report`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                budget: currentBudget,
+                top_n: 10,
+                deep_analysis_n: 5
+            })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        reportData = await resp.json();
+        renderReport(reportData);
+        document.getElementById('lastUpdate').textContent =
+            new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    } catch (err) {
+        alert('Error generating report: ' + err.message);
+    }
+    hideLoading();
+}
+
+function renderReport(data) {
+    // Summary
+    const s = data.summary;
+    document.getElementById('summaryCard').style.display = 'block';
+
+    const moodBadge = document.getElementById('moodBadge');
+    moodBadge.textContent = s.market_mood;
+    moodBadge.className = 'badge ' + (
+        s.market_mood === 'BULLISH' ? 'badge-bullish' :
+        s.market_mood === 'BEARISH' ? 'badge-bearish' : 'badge-neutral'
+    );
+
+    document.getElementById('statsRow').innerHTML = `
+        <div class="col-3 stat-box"><div class="val">${s.qualifying_tickers}</div><div class="label">Qualified</div></div>
+        <div class="col-3 stat-box"><div class="val" style="color:var(--green)">${s.bullish_setups}</div><div class="label">Bullish</div></div>
+        <div class="col-3 stat-box"><div class="val" style="color:var(--red)">${s.bearish_setups}</div><div class="label">Bearish</div></div>
+        <div class="col-3 stat-box"><div class="val" style="color:var(--blue)">${s.total_strategies_found}</div><div class="label">Strategies</div></div>
+    `;
+
+    // Watchlist
+    renderWatchlist(data);
+}
+
+function renderWatchlist(data) {
+    const container = document.getElementById('watchlistContainer');
+    const items = data.watchlist || [];
+    document.getElementById('resultCount').textContent = items.length;
+
+    if (items.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4">No qualifying tickers found.</div>';
+        return;
+    }
+
+    // Map analyses by ticker for quick lookup
+    const analysisMap = {};
+    (data.detailed_analyses || []).forEach(a => {
+        if (a.analysis) analysisMap[a.analysis.ticker] = a;
+    });
+    // Map screener results by ticker
+    const screenMap = {};
+    (data.screener_results || []).forEach(s => {
+        screenMap[s.ticker] = s;
+    });
+
+    let html = '';
+    items.forEach((w, idx) => {
+        const screen = screenMap[w.ticker] || {};
+        const hasAnalysis = !!analysisMap[w.ticker];
+        const squeeze = screen.squeeze || {};
+        const ema200 = screen.ema_200 || {};
+        const uoa = screen.unusual_options_activity || {};
+
+        const scoreClass = w.composite_score > 50 ? 'score-high' : w.composite_score > 30 ? 'score-mid' : 'score-low';
+        const biasClass = w.bias === 'BULLISH' ? 'badge-bullish' : w.bias === 'BEARISH' ? 'badge-bearish' : 'badge-neutral';
+        const mom1d = w.momentum_1d ? (w.momentum_1d * 100).toFixed(1) : '0.0';
+        const mom1dColor = w.momentum_1d > 0 ? 'var(--green)' : w.momentum_1d < 0 ? 'var(--red)' : 'var(--text-muted)';
+
+        let tags = '';
+        if (squeeze.squeeze_score > 30) tags += `<span class="badge badge-squeeze"><i class="bi bi-lightning"></i> Squeeze ${squeeze.squeeze_score}</span>`;
+        if (squeeze.squeeze_firing) tags += `<span class="badge badge-squeeze"><i class="bi bi-fire"></i> FIRING</span>`;
+        if (ema200.testing) tags += `<span class="badge badge-ema"><i class="bi bi-bullseye"></i> 200 EMA Test</span>`;
+        if (ema200.bounce_pattern === 'BULLISH_BOUNCE') tags += `<span class="badge badge-bullish">EMA Bounce</span>`;
+        if (ema200.bounce_pattern === 'BEARISH_REJECTION') tags += `<span class="badge badge-bearish">EMA Reject</span>`;
+        if (uoa.unusual) tags += `<span class="badge badge-uoa"><i class="bi bi-exclamation-triangle"></i> Unusual Activity</span>`;
+        if (screen.earnings_within_7d) tags += `<span class="badge badge-squeeze"><i class="bi bi-calendar-event"></i> Earnings</span>`;
+        if (squeeze.high_short_interest) tags += `<span class="badge badge-squeeze">SI ${squeeze.short_pct_float || '?'}%</span>`;
+
+        html += `
+        <div class="card-dark mb-2 ticker-card" onclick="openDetail('${w.ticker}')">
+            <div class="card-body-dark">
+                <div class="ticker-row">
+                    <div class="score-ring ${scoreClass}">${w.composite_score.toFixed(0)}</div>
+                    <div class="ticker-info">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="ticker-name">${w.ticker}</span>
+                                <span class="badge ${biasClass} ms-1" style="font-size:0.65rem">${w.bias || 'N/A'}</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="ticker-price">$${w.price.toFixed(2)}</div>
+                                <div style="font-size:0.75rem;color:${mom1dColor}">${w.momentum_1d > 0 ? '+' : ''}${mom1d}%</div>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-3 mt-1" style="font-size:0.75rem;color:var(--text-muted)">
+                            ${w.rsi ? `<span>RSI ${w.rsi.toFixed(0)}</span>` : ''}
+                            ${w.atr_pct ? `<span>ATR ${(w.atr_pct*100).toFixed(1)}%</span>` : ''}
+                            ${w.top_strategy && w.top_strategy !== 'Analysis failed' ? `<span style="color:var(--blue)">${w.top_strategy}</span>` : ''}
+                        </div>
+                        <div class="ticker-tags">${tags}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
+
+// ── Detail Modal ─────────────────────────────────────────────────
+function openDetail(ticker) {
+    if (!reportData) return;
+
+    const analysisItem = (reportData.detailed_analyses || []).find(a => a.analysis && a.analysis.ticker === ticker);
+    const screenItem = (reportData.screener_results || []).find(s => s.ticker === ticker);
+
+    if (!analysisItem && !screenItem) {
+        // Trigger a quick-scan if no deep analysis
+        quickScanTicker(ticker);
+        return;
+    }
+
+    const a = analysisItem ? analysisItem.analysis : null;
+    const s = screenItem || {};
+    const bias = a ? a.technical_bias : {};
+    const em = a ? a.expected_move : {};
+    const sr = a ? a.support_resistance : (s.support_resistance || {});
+    const squeeze = s.squeeze || {};
+    const ema200 = s.ema_200 || {};
+    const uoa = s.unusual_options_activity || {};
+
+    document.getElementById('modalTitle').innerHTML = `
+        <span style="font-size:1.3rem;font-weight:700">${ticker}</span>
+        <span class="text-muted ms-2">$${a ? a.current_price : s.current_price}</span>
+    `;
+
+    let body = '';
+
+    // ── Bias & Technicals
+    if (a) {
+        const biasClass = bias.direction === 'BULLISH' ? 'badge-bullish' : bias.direction === 'BEARISH' ? 'badge-bearish' : 'badge-neutral';
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark">
+                <span>Technical Bias</span>
+                <span class="badge ${biasClass}">${bias.direction} (${(bias.confidence*100).toFixed(0)}%)</span>
+            </div>
+            <div class="card-body-dark">
+                <div class="d-flex gap-3 flex-wrap" style="font-size:0.85rem">
+                    <span>RSI: <strong>${bias.rsi}</strong></span>
+                    <span>MACD: <strong style="color:${bias.macd_signal === 'BULLISH' ? 'var(--green)' : 'var(--red)'}">${bias.macd_signal}</strong></span>
+                    <span>VWAP: <strong>${bias.above_vwap ? 'Above' : 'Below'}</strong> $${bias.vwap}</span>
+                    ${bias.ema_200_value ? `<span>200 EMA: <strong>$${bias.ema_200_value}</strong> (${bias.ema_200_distance_pct}%)</span>` : ''}
+                    ${bias.testing_200_ema ? '<span class="badge badge-ema">Testing 200 EMA</span>' : ''}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── 200 EMA Detail
+    if (ema200 && !ema200.insufficient_data) {
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark">
+                <span><i class="bi bi-bullseye"></i> 200 EMA Analysis</span>
+                ${ema200.testing ? '<span class="badge badge-ema">TESTING</span>' : ''}
+            </div>
+            <div class="card-body-dark" style="font-size:0.85rem">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>200 EMA Value</span><strong>$${ema200.ema_value}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Distance</span><strong>${ema200.distance_pct > 0 ? '+' : ''}${ema200.distance_pct}%</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Position</span><strong style="color:${ema200.position === 'ABOVE' ? 'var(--green)' : 'var(--red)'}">${ema200.position}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Touches (30d)</span><strong>${ema200.touch_count_30d}</strong>
+                </div>
+                ${ema200.bounce_pattern ? `<div class="d-flex justify-content-between mb-1">
+                    <span>Pattern</span><strong>${ema200.bounce_pattern.replace('_',' ')}</strong>
+                </div>` : ''}
+                <div class="d-flex justify-content-between">
+                    <span>EMA Trend</span><strong>${ema200.ema_trending}</strong>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Squeeze Detail
+    if (squeeze.squeeze_score > 0) {
+        const sqColor = squeeze.squeeze_score > 60 ? 'var(--orange)' : squeeze.squeeze_score > 30 ? 'var(--orange)' : 'var(--text-muted)';
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark">
+                <span><i class="bi bi-lightning"></i> Squeeze Analysis</span>
+                <strong style="color:${sqColor}">${squeeze.squeeze_score}/100</strong>
+            </div>
+            <div class="card-body-dark" style="font-size:0.85rem">
+                <div class="squeeze-meter mb-2">
+                    <div class="squeeze-fill" style="width:${squeeze.squeeze_score}%;background:${sqColor}"></div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">BB Squeeze: <strong>${squeeze.bb_squeeze ? 'YES' : 'No'}</strong></div>
+                    <div class="col-6">TTM Squeeze: <strong>${squeeze.ttm_squeeze ? 'YES' : 'No'}</strong></div>
+                    <div class="col-6">Squeeze Firing: <strong style="color:${squeeze.squeeze_firing ? 'var(--orange)' : 'var(--text-muted)'}">${squeeze.squeeze_firing ? 'FIRING!' : 'No'}</strong></div>
+                    <div class="col-6">Volume Surge: <strong>${squeeze.volume_surge ? squeeze.volume_ratio + 'x' : 'No'}</strong></div>
+                    ${squeeze.short_pct_float ? `<div class="col-6">Short Float: <strong>${squeeze.short_pct_float}%</strong></div>` : ''}
+                    ${squeeze.short_ratio_days ? `<div class="col-6">Days to Cover: <strong>${squeeze.short_ratio_days}</strong></div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Unusual Options Activity
+    if (uoa.unusual) {
+        let uoaRows = '';
+        (uoa.top_signals || []).forEach(sig => {
+            uoaRows += `<tr>
+                <td><span class="badge ${sig.type === 'CALL' ? 'badge-bullish' : 'badge-bearish'}">${sig.type}</span></td>
+                <td>$${sig.strike}</td>
+                <td>${sig.volume.toLocaleString()}</td>
+                <td>${sig.open_interest.toLocaleString()}</td>
+                <td><strong>${sig.vol_oi_ratio}x</strong></td>
+            </tr>`;
+        });
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark">
+                <span><i class="bi bi-exclamation-triangle"></i> Unusual Options Activity</span>
+                <span class="badge badge-uoa">P/C Ratio: ${uoa.put_call_ratio} (${uoa.sentiment})</span>
+            </div>
+            <div class="card-body-dark">
+                <table class="table table-sm table-dark pnl-table mb-0">
+                    <thead><tr><th>Type</th><th>Strike</th><th>Vol</th><th>OI</th><th>Ratio</th></tr></thead>
+                    <tbody>${uoaRows}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    // ── Expected Move & S/R
+    if (a) {
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark"><span>Expected Move & Levels</span></div>
+            <div class="card-body-dark" style="font-size:0.85rem">
+                <div class="row g-2">
+                    <div class="col-6">Daily Move: <strong>$${em.daily_expected_move} (${em.daily_expected_move_pct}%)</strong></div>
+                    <div class="col-6">Period Move: <strong>$${em.period_expected_move} (${em.period_expected_move_pct}%)</strong></div>
+                    <div class="col-6">1SD Range: <strong>$${em.one_sd_down} - $${em.one_sd_up}</strong></div>
+                    <div class="col-6">2SD Range: <strong>$${em.two_sd_down} - $${em.two_sd_up}</strong></div>
+                </div>
+                <hr style="border-color:var(--border)">
+                <div class="row g-2">
+                    <div class="col-4">R2: <strong style="color:var(--red)">$${sr.resistance_2}</strong></div>
+                    <div class="col-4">R1: <strong style="color:var(--red)">$${sr.resistance_1}</strong></div>
+                    <div class="col-4">Pivot: <strong>$${sr.pivot}</strong></div>
+                    <div class="col-4">S1: <strong style="color:var(--green)">$${sr.support_1}</strong></div>
+                    <div class="col-4">S2: <strong style="color:var(--green)">$${sr.support_2}</strong></div>
+                    <div class="col-4">Exp: <strong>${a.expiration}</strong> (${a.days_to_expiration}d)</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // ── Top Contracts (Greeks)
+    if (a && (a.top_calls.length || a.top_puts.length)) {
+        const topContract = a.top_calls[0] || a.top_puts[0];
+        if (topContract) {
+            body += `
+            <div class="card-dark mb-3">
+                <div class="card-header-dark"><span>Best ${topContract.type.toUpperCase()} Contract</span></div>
+                <div class="card-body-dark">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>$${topContract.strike} ${topContract.type.toUpperCase()}</strong>
+                        <span>$${topContract.premium} (${topContract.total_cost} total)</span>
+                    </div>
+                    <div class="d-flex gap-2 mb-2">
+                        <div class="greek-item"><div class="greek-val">${topContract.delta}</div><div class="greek-label">Delta</div></div>
+                        <div class="greek-item"><div class="greek-val">${topContract.gamma}</div><div class="greek-label">Gamma</div></div>
+                        <div class="greek-item"><div class="greek-val">${topContract.theta}</div><div class="greek-label">Theta</div></div>
+                        <div class="greek-item"><div class="greek-val">${topContract.vega}</div><div class="greek-label">Vega</div></div>
+                        <div class="greek-item"><div class="greek-val">${(topContract.probability_of_profit*100).toFixed(0)}%</div><div class="greek-label">PoP</div></div>
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--text-muted)">
+                        Breakeven: $${topContract.breakeven} | Spread: $${topContract.spread || 'N/A'} |
+                        Vol: ${topContract.volume.toLocaleString()} | OI: ${topContract.open_interest.toLocaleString()}
+                    </div>
+                    ${topContract.pnl_scenarios ? renderPnlTable(topContract.pnl_scenarios) : ''}
+                </div>
+            </div>`;
+        }
+    }
+
+    // ── Strategies with Trade Plans
+    if (a && a.strategies.length) {
+        body += `<div class="section-header mt-3"><i class="bi bi-lightning-charge"></i> Strategy Recommendations</div>`;
+        a.strategies.forEach(strat => {
+            const riskClass = strat.risk_level === 'LOW' ? 'badge-risk-low' : strat.risk_level === 'HIGH' ? 'badge-risk-high' : 'badge-risk-moderate';
+            body += `
+            <div class="strategy-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="strat-name">${strat.name}</div>
+                    <span class="badge ${riskClass}">${strat.risk_level}</span>
+                </div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">${strat.rationale}</div>
+                <div class="d-flex gap-3 flex-wrap" style="font-size:0.8rem">
+                    <span>Max Loss: <strong style="color:var(--red)">$${strat.max_loss}</strong></span>
+                    <span>Max Gain: <strong style="color:var(--green)">${strat.max_gain}</strong></span>
+                    <span>Breakeven: <strong>$${strat.breakeven}</strong></span>
+                </div>
+                ${strat.trade_plan ? renderTradePlan(strat.trade_plan) : ''}
+            </div>`;
+        });
+    }
+
+    document.getElementById('modalBody').innerHTML = body;
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+}
+
+function renderTradePlan(tp) {
+    return `
+    <div class="trade-plan">
+        <h6><i class="bi bi-clipboard-check"></i> TRADE PLAN</h6>
+        ${tp.option_to_buy ? `<div class="plan-row"><span class="plan-label">Contract</span><span class="plan-value">${tp.option_to_buy}</span></div>` : ''}
+        ${tp.entry_price ? `<div class="plan-row"><span class="plan-label">Entry</span><span class="plan-value">${typeof tp.entry_price === 'string' ? tp.entry_price : '$'+tp.entry_price}</span></div>` : ''}
+        <div class="plan-row"><span class="plan-label">Total Cost</span><span class="plan-value">$${tp.total_cost}</span></div>
+        ${tp.entry_trigger ? `<div class="plan-row"><span class="plan-label">Entry Trigger</span><span class="plan-value" style="color:var(--blue)">${tp.entry_trigger}</span></div>` : ''}
+        ${tp.profit_target_1 ? `<div class="plan-row"><span class="plan-label">Target 1</span><span class="plan-value" style="color:var(--green)">${tp.profit_target_1}</span></div>` : ''}
+        ${tp.profit_target_2 ? `<div class="plan-row"><span class="plan-label">Target 2</span><span class="plan-value" style="color:var(--green)">${tp.profit_target_2}</span></div>` : ''}
+        ${tp.stop_loss ? `<div class="plan-row"><span class="plan-label">Stop Loss</span><span class="plan-value" style="color:var(--red)">${tp.stop_loss}</span></div>` : ''}
+        ${tp.risk_reward_ratio ? `<div class="plan-row"><span class="plan-label">Risk/Reward</span><span class="plan-value">${tp.risk_reward_ratio}</span></div>` : ''}
+        ${tp.time_horizon ? `<div class="plan-row"><span class="plan-label">Time Horizon</span><span class="plan-value">${tp.time_horizon}</span></div>` : ''}
+        ${tp.daily_theta_cost ? `<div class="plan-row"><span class="plan-label">Theta Cost</span><span class="plan-value" style="color:var(--red)">${tp.daily_theta_cost}</span></div>` : ''}
+        ${tp.what_to_expect ? `<div class="plan-row" style="border:none;padding-top:8px"><span style="font-size:0.8rem;color:var(--text-muted)">${tp.what_to_expect}</span></div>` : ''}
+    </div>`;
+}
+
+function renderPnlTable(scenarios) {
+    let rows = '';
+    scenarios.forEach(s => {
+        const expClass = s.pnl_at_exp >= 0 ? 'pnl-positive' : 'pnl-negative';
+        const intradayVal = s.est_pnl_intraday !== null ? `$${s.est_pnl_intraday}` : '--';
+        const intradayClass = s.est_pnl_intraday !== null ? (s.est_pnl_intraday >= 0 ? 'pnl-positive' : 'pnl-negative') : '';
+        rows += `<tr>
+            <td>${s.stock_move_pct > 0 ? '+' : ''}${s.stock_move_pct}%</td>
+            <td>$${s.stock_price}</td>
+            <td class="${expClass}">$${s.pnl_at_exp} (${s.pnl_pct_at_exp > 0 ? '+' : ''}${s.pnl_pct_at_exp}%)</td>
+            <td class="${intradayClass}">${intradayVal}</td>
+        </tr>`;
+    });
+    return `
+    <div class="mt-2">
+        <small class="text-muted">P&L Scenarios (1 contract)</small>
+        <table class="table table-sm table-dark pnl-table mt-1 mb-0">
+            <thead><tr><th>Move</th><th>Price</th><th>P&L @ Exp</th><th>Est Intraday</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </div>`;
+}
+
+// ── Quick Scan ───────────────────────────────────────────────────
+async function quickScan() {
+    const ticker = document.getElementById('quickSearch').value.trim().toUpperCase();
+    if (!ticker) return;
+    quickScanTicker(ticker);
+}
+
+async function quickScanTicker(ticker) {
+    showLoading(`Analyzing ${ticker}...`);
+    try {
+        const resp = await fetch(`${API}/options/analyze`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticker: ticker, budget: currentBudget })
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        // Inject into report data structure so modal works
+        if (!reportData) {
+            reportData = { detailed_analyses: [], screener_results: [], watchlist: [], summary: {} };
+        }
+        reportData.detailed_analyses = reportData.detailed_analyses.filter(a => !a.analysis || a.analysis.ticker !== ticker);
+        reportData.detailed_analyses.push({ analysis: data.analysis, screening_data: { ticker } });
+
+        hideLoading();
+        openDetailDirect(data.analysis);
+    } catch (err) {
+        hideLoading();
+        alert('Error: ' + err.message);
+    }
+}
+
+function openDetailDirect(a) {
+    // Build modal directly from analysis data
+    const bias = a.technical_bias || {};
+    const em = a.expected_move || {};
+    const sr = a.support_resistance || {};
+
+    document.getElementById('modalTitle').innerHTML = `
+        <span style="font-size:1.3rem;font-weight:700">${a.ticker}</span>
+        <span class="text-muted ms-2">$${a.current_price}</span>
+    `;
+
+    let body = '';
+
+    // Bias
+    const biasClass = bias.direction === 'BULLISH' ? 'badge-bullish' : bias.direction === 'BEARISH' ? 'badge-bearish' : 'badge-neutral';
+    body += `
+    <div class="card-dark mb-3">
+        <div class="card-header-dark">
+            <span>Technical Bias</span>
+            <span class="badge ${biasClass}">${bias.direction} (${(bias.confidence*100).toFixed(0)}%)</span>
+        </div>
+        <div class="card-body-dark">
+            <div class="d-flex gap-3 flex-wrap" style="font-size:0.85rem">
+                <span>RSI: <strong>${bias.rsi}</strong></span>
+                <span>MACD: <strong style="color:${bias.macd_signal === 'BULLISH' ? 'var(--green)' : 'var(--red)'}">${bias.macd_signal}</strong></span>
+                <span>VWAP: <strong>${bias.above_vwap ? 'Above' : 'Below'}</strong> $${bias.vwap}</span>
+                ${bias.ema_200_value ? `<span>200 EMA: <strong>$${bias.ema_200_value}</strong> (${bias.ema_200_distance_pct}%)</span>` : ''}
+                ${bias.testing_200_ema ? '<span class="badge badge-ema">Testing 200 EMA</span>' : ''}
+            </div>
+        </div>
+    </div>`;
+
+    // Expected move
+    body += `
+    <div class="card-dark mb-3">
+        <div class="card-header-dark"><span>Expected Move & Levels</span></div>
+        <div class="card-body-dark" style="font-size:0.85rem">
+            <div class="row g-2">
+                <div class="col-6">Daily Move: <strong>$${em.daily_expected_move} (${em.daily_expected_move_pct}%)</strong></div>
+                <div class="col-6">Period Move: <strong>$${em.period_expected_move} (${em.period_expected_move_pct}%)</strong></div>
+                <div class="col-6">1SD: <strong>$${em.one_sd_down} - $${em.one_sd_up}</strong></div>
+                <div class="col-6">Exp: <strong>${a.expiration}</strong> (${a.days_to_expiration}d)</div>
+            </div>
+            <hr style="border-color:var(--border)">
+            <div class="row g-2">
+                <div class="col-4">R2: <strong style="color:var(--red)">$${sr.resistance_2}</strong></div>
+                <div class="col-4">R1: <strong style="color:var(--red)">$${sr.resistance_1}</strong></div>
+                <div class="col-4">Pivot: <strong>$${sr.pivot}</strong></div>
+                <div class="col-4">S1: <strong style="color:var(--green)">$${sr.support_1}</strong></div>
+                <div class="col-4">S2: <strong style="color:var(--green)">$${sr.support_2}</strong></div>
+            </div>
+        </div>
+    </div>`;
+
+    // Top contract
+    const topContract = (a.top_calls && a.top_calls[0]) || (a.top_puts && a.top_puts[0]);
+    if (topContract) {
+        body += `
+        <div class="card-dark mb-3">
+            <div class="card-header-dark"><span>Best ${topContract.type.toUpperCase()}</span></div>
+            <div class="card-body-dark">
+                <div class="d-flex justify-content-between mb-2">
+                    <strong>$${topContract.strike} ${topContract.type.toUpperCase()}</strong>
+                    <span>$${topContract.premium} ($${topContract.total_cost} total)</span>
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <div class="greek-item"><div class="greek-val">${topContract.delta}</div><div class="greek-label">Delta</div></div>
+                    <div class="greek-item"><div class="greek-val">${topContract.gamma}</div><div class="greek-label">Gamma</div></div>
+                    <div class="greek-item"><div class="greek-val">${topContract.theta}</div><div class="greek-label">Theta</div></div>
+                    <div class="greek-item"><div class="greek-val">${topContract.vega}</div><div class="greek-label">Vega</div></div>
+                    <div class="greek-item"><div class="greek-val">${(topContract.probability_of_profit*100).toFixed(0)}%</div><div class="greek-label">PoP</div></div>
+                </div>
+                ${topContract.pnl_scenarios ? renderPnlTable(topContract.pnl_scenarios) : ''}
+            </div>
+        </div>`;
+    }
+
+    // Strategies
+    if (a.strategies && a.strategies.length) {
+        body += `<div class="section-header mt-3"><i class="bi bi-lightning-charge"></i> Strategies</div>`;
+        a.strategies.forEach(strat => {
+            const riskClass = strat.risk_level === 'LOW' ? 'badge-risk-low' : strat.risk_level === 'HIGH' ? 'badge-risk-high' : 'badge-risk-moderate';
+            body += `
+            <div class="strategy-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="strat-name">${strat.name}</div>
+                    <span class="badge ${riskClass}">${strat.risk_level}</span>
+                </div>
+                <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:8px">${strat.rationale}</div>
+                <div class="d-flex gap-3 flex-wrap" style="font-size:0.8rem">
+                    <span>Max Loss: <strong style="color:var(--red)">$${strat.max_loss}</strong></span>
+                    <span>Max Gain: <strong style="color:var(--green)">${strat.max_gain}</strong></span>
+                    <span>Breakeven: <strong>$${strat.breakeven}</strong></span>
+                </div>
+                ${strat.trade_plan ? renderTradePlan(strat.trade_plan) : ''}
+            </div>`;
+        });
+    }
+
+    document.getElementById('modalBody').innerHTML = body;
+    new bootstrap.Modal(document.getElementById('detailModal')).show();
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+hideLoading();
+</script>
+</body>
+</html>

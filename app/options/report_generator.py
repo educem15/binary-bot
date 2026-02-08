@@ -92,12 +92,15 @@ class DailyOptionsReport:
             entry = {
                 "rank": 0,
                 "ticker": screening["ticker"],
-                "price": screening["current_price"],
-                "composite_score": screening["composite_score"],
+                "price": screening.get("current_price", 0),
+                "composite_score": screening.get("composite_score", 0),
                 "beta": screening.get("beta"),
                 "atr_pct": screening.get("atr_pct"),
                 "momentum_1d": screening.get("momentum_1d"),
                 "implied_volatility": screening.get("implied_volatility"),
+                "squeeze_score": screening.get("squeeze", {}).get("squeeze_score", 0),
+                "ema_200_testing": screening.get("ema_200", {}).get("testing", False),
+                "unusual_activity": screening.get("unusual_options_activity", {}).get("unusual", False),
             }
 
             if analysis:
@@ -156,6 +159,11 @@ class DailyOptionsReport:
 
         strategies_available = sum(w.get("num_strategies", 0) for w in watchlist)
 
+        # Count squeeze and EMA setups from screener data
+        squeeze_setups = sum(1 for s in screened if s.get("squeeze", {}).get("squeeze_score", 0) > 30)
+        ema_testing = sum(1 for s in screened if s.get("ema_200", {}).get("testing", False))
+        unusual_activity_count = sum(1 for s in screened if s.get("unusual_options_activity", {}).get("unusual", False))
+
         return {
             "total_tickers_scanned": len(self.screener.watchlist),
             "qualifying_tickers": len(screened),
@@ -165,6 +173,9 @@ class DailyOptionsReport:
             "neutral_setups": len(neutral),
             "average_implied_volatility": avg_iv,
             "total_strategies_found": strategies_available,
+            "squeeze_setups": squeeze_setups,
+            "ema_200_testing": ema_testing,
+            "unusual_activity_tickers": unusual_activity_count,
             "market_mood": (
                 "BULLISH" if len(bullish) > len(bearish) * 1.5
                 else "BEARISH" if len(bearish) > len(bullish) * 1.5

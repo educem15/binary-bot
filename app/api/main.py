@@ -55,6 +55,11 @@ async def root():
     """Serve the frontend"""
     return FileResponse('app/frontend/index.html')
 
+@app.get("/options")
+async def options_dashboard():
+    """Serve the options research dashboard"""
+    return FileResponse('app/frontend/options.html')
+
 @app.post("/signals")
 async def get_signals(request: SignalRequest):
     """Get trading signals based on specified criteria"""
