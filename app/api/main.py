@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -10,6 +10,9 @@ import json
 import os
 
 from app.signal_generator import SignalGenerator
+from app.options.screener import OptionsScreener
+from app.options.analyzer import OptionsAnalyzer
+from app.options.report_generator import DailyOptionsReport
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -129,6 +132,129 @@ async def load_models():
     except Exception as e:
         logger.error(f"Error loading models: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ─── Options Research Endpoints ─────────────────────────────────────
+
+class OptionsScreenRequest(BaseModel):
+    budget: Optional[float] = 500.0
+    watchlist: Optional[List[str]] = None
+    top_n: Optional[int] = 10
+
+class OptionsAnalyzeRequest(BaseModel):
+    ticker: str
+    budget: Optional[float] = 500.0
+    expiration: Optional[str] = None
+
+class DailyReportRequest(BaseModel):
+    budget: Optional[float] = 500.0
+    watchlist: Optional[List[str]] = None
+    top_n: Optional[int] = 10
+    deep_analysis_n: Optional[int] = 5
+    expiration: Optional[str] = None
+
+@app.post("/options/scan")
+async def scan_options(request: OptionsScreenRequest):
+    """
+    Screen the market for high-potential options trades.
+    Returns ranked tickers with composite scores, volatility, momentum, and IV data.
+    """
+    try:
+        screener = OptionsScreener(
+            budget=request.budget,
+            watchlist=request.watchlist,
+        )
+        results = screener.get_top_candidates(n=request.top_n)
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "budget": request.budget,
+            "candidates": results,
+        }
+    except Exception as e:
+        logger.error(f"Error scanning options: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/options/analyze")
+async def analyze_options(request: OptionsAnalyzeRequest):
+    """
+    Deep-analyze a specific ticker's options chain.
+    Returns Greeks, probability of profit, and strategy recommendations.
+    """
+    try:
+        analyzer = OptionsAnalyzer(budget=request.budget)
+        analysis = analyzer.analyze_ticker(
+            ticker=request.ticker,
+            expiration=request.expiration,
+        )
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "analysis": analysis,
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing {request.ticker}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/options/daily-report")
+async def daily_report(request: DailyReportRequest):
+    """
+    Generate the full daily options research report (JSON).
+    Screens the watchlist, deep-analyzes top picks, and returns ranked strategies.
+    """
+    try:
+        report_gen = DailyOptionsReport(
+            budget=request.budget,
+            watchlist=request.watchlist,
+        )
+        report = report_gen.generate_report(
+            top_n=request.top_n,
+            deep_analysis_n=request.deep_analysis_n,
+            expiration=request.expiration,
+        )
+        return report
+    except Exception as e:
+        logger.error(f"Error generating daily report: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/options/daily-report/text")
+async def daily_report_text(request: DailyReportRequest):
+    """
+    Generate the full daily options research report (human-readable text).
+    Perfect for reading in a terminal or copying to notes.
+    """
+    try:
+        report_gen = DailyOptionsReport(
+            budget=request.budget,
+            watchlist=request.watchlist,
+        )
+        text = report_gen.generate_text_report(
+            top_n=request.top_n,
+            deep_analysis_n=request.deep_analysis_n,
+        )
+        return PlainTextResponse(content=text)
+    except Exception as e:
+        logger.error(f"Error generating text report: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/options/quick-scan/{ticker}")
+async def quick_scan_ticker(ticker: str, budget: float = 500.0):
+    """
+    Quick scan a single ticker for options potential.
+    Use this for ad-hoc checks on specific stocks.
+    """
+    try:
+        screener = OptionsScreener(budget=budget)
+        result = screener.scan_ticker(ticker.upper())
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"No qualifying options found for {ticker}")
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "result": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error scanning {ticker}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
