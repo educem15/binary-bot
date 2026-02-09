@@ -9,7 +9,6 @@ import logging
 import json
 import os
 
-from app.signal_generator import SignalGenerator
 from app.options.screener import OptionsScreener
 from app.options.analyzer import OptionsAnalyzer
 from app.options.report_generator import DailyOptionsReport
@@ -17,6 +16,10 @@ from app.options.report_generator import DailyOptionsReport
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Resolve paths relative to the project root (two levels up from this file)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+FRONTEND_DIR = os.path.join(BASE_DIR, "app", "frontend")
 
 app = FastAPI(title="Binary Options Trading Signals API")
 
@@ -30,10 +33,17 @@ app.add_middleware(
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="app/frontend"), name="static")
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
-# Initialize signal generator
-signal_generator = SignalGenerator()
+# Lazy-load SignalGenerator (requires heavy ML dependencies)
+signal_generator = None
+
+def _get_signal_generator():
+    global signal_generator
+    if signal_generator is None:
+        from app.signal_generator import SignalGenerator
+        signal_generator = SignalGenerator()
+    return signal_generator
 
 class TradingResult(BaseModel):
     pair: str
@@ -53,18 +63,18 @@ class SignalRequest(BaseModel):
 @app.get("/")
 async def root():
     """Serve the frontend"""
-    return FileResponse('app/frontend/index.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 @app.get("/options")
 async def options_dashboard():
     """Serve the options research dashboard"""
-    return FileResponse('app/frontend/options.html')
+    return FileResponse(os.path.join(FRONTEND_DIR, "options.html"))
 
 @app.post("/signals")
 async def get_signals(request: SignalRequest):
     """Get trading signals based on specified criteria"""
     try:
-        signals = signal_generator.generate_signals(
+        signals = _get_signal_generator().generate_signals(
             timeframes=request.timeframes,
             pairs=request.pairs
         )
@@ -85,7 +95,7 @@ async def get_signals(request: SignalRequest):
 async def get_best_signals(min_strength: float = 3.0):
     """Get the strongest current trading signals"""
     try:
-        signals = signal_generator.get_best_signals(min_strength)
+        signals = _get_signal_generator().get_best_signals(min_strength)
         return {
             "timestamp": datetime.now().isoformat(),
             "signals": signals
@@ -99,7 +109,7 @@ async def update_results(results: List[TradingResult], background_tasks: Backgro
     """Update models with actual trading results"""
     try:
         # Update models in the background
-        background_tasks.add_task(signal_generator.update_models, [r.dict() for r in results])
+        background_tasks.add_task(_get_signal_generator().update_models, [r.dict() for r in results])
         return {"status": "success", "message": "Model update scheduled"}
     except Exception as e:
         logger.error(f"Error updating results: {str(e)}")
@@ -109,7 +119,7 @@ async def update_results(results: List[TradingResult], background_tasks: Backgro
 async def get_statistics():
     """Get signal generation statistics"""
     try:
-        stats = signal_generator.get_signal_statistics()
+        stats = _get_signal_generator().get_signal_statistics()
         return {
             "timestamp": datetime.now().isoformat(),
             "statistics": stats
@@ -122,7 +132,7 @@ async def get_statistics():
 async def save_models():
     """Save current model state"""
     try:
-        signal_generator.save_models()
+        _get_signal_generator().save_models()
         return {"status": "success", "message": "Models saved successfully"}
     except Exception as e:
         logger.error(f"Error saving models: {str(e)}")
@@ -132,7 +142,7 @@ async def save_models():
 async def load_models():
     """Load saved model state"""
     try:
-        signal_generator.load_models()
+        _get_signal_generator().load_models()
         return {"status": "success", "message": "Models loaded successfully"}
     except Exception as e:
         logger.error(f"Error loading models: {str(e)}")
