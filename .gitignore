@@ -38,3 +38,8 @@ Thumbs.db
 models/
 *.db
 *.log
+
+# UGC Automation – secrets and generated output
+ugc_automation/.env
+ugc_automation/output/videos/
+ugc_automation/output/logs/
