@@ -43,7 +43,7 @@ class PostResult:
 class SocialPoster:
     """Posts videos to TikTok and Instagram."""
 
-    def post(self, video_path: str, script: VideoScript) -> List[PostResult]:
+    def post(self, video_path: str, script: VideoScript, public_url: str = "") -> List[PostResult]:
         """Post the video to all configured platforms."""
         results: List[PostResult] = []
 

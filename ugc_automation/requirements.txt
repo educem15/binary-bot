@@ -1,9 +1,25 @@
-# UGC Automation dependencies
+# UGC Automation – Python dependencies
+# Install: pip install -r requirements.txt
+
+# Core AI
 anthropic>=0.25.0
+
+# HTTP / scraping
 requests>=2.31.0
 beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Scheduling
 schedule>=1.2.0
+
+# Video / audio
 moviepy>=1.0.3
 gTTS>=2.5.0
 Pillow>=10.0.0
-lxml>=5.0.0
+
+# Cloud storage (optional – S3 / Cloudflare R2)
+boto3>=1.34.0
+
+# System requirement (NOT pip – install separately):
+# Ubuntu/Debian: sudo apt-get install imagemagick ffmpeg
+# macOS:         brew install imagemagick ffmpeg
