@@ -60,20 +60,30 @@ class SignalGenerator:
                     ml_predictions = self.trading_model.predict(df)
                     
                     # Calculate entry point
-                    entry_price, direction = tech_indicators.get_entry_point()
-                    
-                    # Combine signals
+                    entry_price, tech_direction = tech_indicators.get_entry_point()
+
+                    ml_direction = ml_predictions['ml_direction']
+
+                    # Combine signals — penalise if technical and ML directions disagree
                     signal_strength = self._combine_signals(
                         tech_signals['overall_strength'],
-                        ml_predictions['signal_strength']
+                        ml_predictions['signal_strength'],
+                        directions_agree=(tech_direction == ml_direction)
                     )
-                    
+
+                    # Use ML direction when it contradicts technicals (ML carries 40% weight);
+                    # when they agree, both point the same way so either is fine.
+                    direction = tech_direction if tech_direction == ml_direction else ml_direction
+
                     # Create signal object
                     signal = {
                         'pair': pair,
                         'timeframe': timeframe,
                         'timestamp': datetime.now().isoformat(),
                         'direction': direction,
+                        'tech_direction': tech_direction,
+                        'ml_direction': ml_direction,
+                        'directions_agree': tech_direction == ml_direction,
                         'entry_price': entry_price,
                         'signal_strength': signal_strength,
                         'technical_signals': tech_signals,
@@ -92,10 +102,17 @@ class SignalGenerator:
         all_signals.sort(key=lambda x: x['signal_strength'], reverse=True)
         return all_signals
         
-    def _combine_signals(self, tech_strength: float, ml_strength: float) -> float:
-        """Combine technical and ML signal strengths"""
-        # Weight technical analysis more heavily (60/40 split)
+    def _combine_signals(self, tech_strength: float, ml_strength: float,
+                         directions_agree: bool = True) -> float:
+        """Combine technical and ML signal strengths.
+
+        When tech and ML directions disagree the signal is fundamentally ambiguous,
+        so the combined strength is capped at 2.5 (below the default min_strength
+        threshold of 3.0) to filter it out automatically.
+        """
         combined_strength = (0.6 * tech_strength) + (0.4 * ml_strength)
+        if not directions_agree:
+            combined_strength = min(combined_strength, 2.5)
         return round(combined_strength, 2)
         
     def update_models(self, results: List[Dict]):

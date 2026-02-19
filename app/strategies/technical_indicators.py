@@ -40,9 +40,9 @@ class TechnicalIndicators:
         adx = ta.adx(df['high'], df['low'], df['close'])
         df = pd.concat([df, adx], axis=1)
         
-        # Ichimoku Cloud
+        # Ichimoku Cloud — ta.ichimoku returns a tuple (lines_df, kumo_df); use only lines
         ichimoku = ta.ichimoku(df['high'], df['low'], df['close'])
-        df = pd.concat([df, ichimoku], axis=1)
+        df = pd.concat([df, ichimoku[0]], axis=1)
         
         # Volume Indicators
         df['obv'] = ta.obv(df['close'], df['volume'])
@@ -100,8 +100,8 @@ class TechnicalIndicators:
         """Calculate momentum strength on a scale of 1-5"""
         strength = 1.0
         
-        # RSI
-        rsi = df['RSI_14'].iloc[-1]
+        # RSI — column is stored as 'rsi' (not the pandas_ta default 'RSI_14')
+        rsi = df['rsi'].iloc[-1]
         if 30 <= rsi <= 70:
             strength += 1
         
@@ -109,8 +109,8 @@ class TechnicalIndicators:
         if df['STOCHk_14_3_3'].iloc[-1] > df['STOCHd_14_3_3'].iloc[-1]:
             strength += 1
             
-        # CCI
-        cci = df['CCI_14_0.015'].iloc[-1]
+        # CCI — column is stored as 'cci' (not the pandas_ta default 'CCI_14_0.015')
+        cci = df['cci'].iloc[-1]
         if -100 <= cci <= 100:
             strength += 1
             

@@ -19,8 +19,10 @@ class TradingModel:
         
     def _build_lstm_model(self) -> Sequential:
         """Build and compile LSTM model"""
+        # input_shape = (sequence_length, n_features); n_features must match prepare_features output (16)
+        n_features = 16
         model = Sequential([
-            LSTM(units=50, return_sequences=True, input_shape=(60, 30)),
+            LSTM(units=50, return_sequences=True, input_shape=(60, n_features)),
             Dropout(0.2),
             LSTM(units=50, return_sequences=False),
             Dropout(0.2),
@@ -55,12 +57,16 @@ class TradingModel:
         targets = (future_price > df['close']).astype(int)
         return targets[:-timeframe]  # Remove last rows where we don't have future data
         
-    def create_sequences(self, data: np.ndarray, seq_length: int) -> Tuple[np.ndarray, np.ndarray]:
-        """Create sequences for LSTM model"""
+    def create_sequences(self, data: np.ndarray, labels: np.ndarray, seq_length: int) -> Tuple[np.ndarray, np.ndarray]:
+        """Create (X, y) sequences for LSTM training.
+
+        X[i] = feature window of length seq_length starting at position i.
+        y[i] = binary label at position i + seq_length (price went up = 1, down = 0).
+        """
         X, y = [], []
         for i in range(len(data) - seq_length):
             X.append(data[i:(i + seq_length)])
-            y.append(data[i + seq_length])
+            y.append(labels[i + seq_length])
         return np.array(X), np.array(y)
         
     def train(self, df: pd.DataFrame, timeframe: int):
@@ -76,11 +82,11 @@ class TradingModel:
         
         # Train Random Forest
         self.rf_model.fit(features, targets)
-        
-        # Prepare sequences for LSTM
+
+        # Prepare sequences for LSTM — pass targets so labels are binary (0/1), not feature vectors
         seq_length = 60
-        X_lstm, y_lstm = self.create_sequences(features, seq_length)
-        
+        X_lstm, y_lstm = self.create_sequences(features, targets, seq_length)
+
         # Train LSTM
         self.lstm_model.fit(
             X_lstm, y_lstm,
@@ -109,6 +115,8 @@ class TradingModel:
             'rf_probability': float(rf_prob),
             'lstm_probability': float(lstm_prob),
             'ensemble_probability': float(ensemble_prob),
+            # ml_direction encodes which way the model thinks price will move
+            'ml_direction': 'CALL' if ensemble_prob >= 0.5 else 'PUT',
             'signal_strength': self._calculate_signal_strength(ensemble_prob)
         }
         
@@ -130,10 +138,10 @@ class TradingModel:
         
         # Update Random Forest (online learning)
         self.rf_model.fit(features, targets)
-        
-        # Update LSTM
+
+        # Update LSTM — pass targets as labels
         seq_length = 60
-        X_lstm, y_lstm = self.create_sequences(features, seq_length)
+        X_lstm, y_lstm = self.create_sequences(features, targets, seq_length)
         
         self.lstm_model.fit(
             X_lstm, y_lstm,
